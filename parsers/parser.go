@@ -7,6 +7,7 @@ import (
 type Parser interface {
 	Parse(data []byte) (*s.APISchema, error)
 	Detect(data []byte) bool
+	Compress(schema *s.APISchema) ([]string, error)
 }
 
 type WordpressParser struct{}

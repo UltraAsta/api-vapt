@@ -2,7 +2,6 @@ package main
 
 import (
 	p "apivapt/parsers"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -30,6 +29,15 @@ func main() {
 			log.Fatalf("Something went wrong parsing wordpress body: %v", err)
 		}
 
-		fmt.Printf("%v", schema)
+		wp.Compress(schema)
+
+		// file, err := os.Create("output.json")
+		// if err != nil {
+		// 	log.Fatalf("Something went wrong creating output file: %v", err)
+		// }
+
+		// defer file.Close()
+
+		// json.NewEncoder(file).Encode(&schema)
 	}
 }
