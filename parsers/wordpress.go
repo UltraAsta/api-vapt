@@ -4,10 +4,31 @@ import (
 	s "apivapt/schema"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 )
 
-func (w *WordpressParser) Detect(data []byte) bool {
+func (w *WordpressParser) Detect(header http.Header, body string) bool {
+	link := header.Get("Link")
+	if strings.Contains(link, "wp-json") || strings.Contains(link, "api.w.org") {
+		return true
+	}
+
+	// couldn't find hints in header. try body
+	var pathsToSearch = []string{
+		"wp-login.php", "wp-json", "wp-content", "wp-admin", "wp-includes",
+	}
+
+	for _, path := range pathsToSearch {
+		if strings.Contains(body, path) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (w *WordpressParser) HasRoutes(data []byte) bool {
 	var probe map[string]json.RawMessage
 	json.Unmarshal(data, &probe)
 
