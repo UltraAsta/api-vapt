@@ -5,8 +5,8 @@ import (
 	"net/http"
 )
 
-func (o *OpenAPIParser) Detect(header http.Header, body []byte) bool {
-	return false
+func (o *OpenAPIParser) Detect(baseURL string, header http.Header, body []byte) (bool, string) {
+	return false, ""
 }
 
 func (o *OpenAPIParser) HasRoutes(data []byte) bool {

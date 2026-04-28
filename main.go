@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -10,31 +9,25 @@ import (
 )
 
 func main() {
-	url := "http://localhost:31337/"
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Fatalf("Error sending a get request to the target: %v", err)
-	}
+	baseUrl := "https://reboot01.com/"
 
-	defer resp.Body.Close()
+	header, body := ReadURLContent(baseUrl)
 
-	body, err := io.ReadAll(resp.Body)
-	fmt.Println(string(body))
-	if err != nil {
-		log.Fatalf("Error reading the response body: %v", err)
-	}
+	ctx := (&ParserContext{}).Init()
 
-	ctx := ParserContext{}
-	detected := ctx.Detect(resp.Header, body)
-	if detected {
-		schema, err := ctx.Parse(body)
+	parser, docURL := ctx.Detect(baseUrl, header, body)
+	if parser != nil && docURL != "" {
+
+		header, body = ReadURLContent(docURL)
+
+		schema, err := parser.Parse(body)
 		if err != nil {
 			log.Fatalf("Something went wrong parsing wordpress body: %v", err)
 		}
 
 		compressed, _ := schema.Compress()
 
-		file, err := os.Create("output.json")
+		file, err := os.Create("output.txt")
 		if err != nil {
 			log.Fatalf("Something went wrong creating output file: %v", err)
 		}
@@ -43,4 +36,20 @@ func main() {
 
 		json.NewEncoder(file).Encode(&compressed)
 	}
+}
+
+func ReadURLContent(url string) (http.Header, []byte) {
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Fatalf("Error sending a get request to the target: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf("Error reading the response body: %v", err)
+	}
+
+	return resp.Header, body
 }

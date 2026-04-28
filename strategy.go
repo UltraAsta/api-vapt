@@ -20,13 +20,13 @@ func (c *ParserContext) Init() *ParserContext {
 	return c
 }
 
-func (c *ParserContext) Detect(header http.Header, body []byte) bool {
-	for _, p := range c.Parsers {
-		if p.Detect(header, body) {
-			return true
+func (c *ParserContext) Detect(baseURL string, header http.Header, body []byte) (p.Parser, string) {
+	for _, parser := range c.Parsers {
+		if ok, docURL := parser.Detect(baseURL, header, body); ok {
+			return parser, docURL
 		}
 	}
-	return false
+	return nil, ""
 }
 
 func (c *ParserContext) Parse(data []byte) (*schema.APISchema, error) {

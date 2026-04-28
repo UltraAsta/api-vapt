@@ -3,30 +3,57 @@ package parsers
 import (
 	s "apivapt/schema"
 	"encoding/json"
+	"io"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
-func (w *WordpressParser) Detect(header http.Header, body []byte) bool {
-	bodyStr := string(body)
+var wordpressPaths = []string{
+	"/wp-json",
+	"/index.php?rest_route=/",
+	"/?rest_route=/",
+	"/wp/wp-json",
+	"/wp/index.php?rest_route=/",
+}
 
+func (w *WordpressParser) Detect(baseURL string, header http.Header, body []byte) (bool, string) {
 	link := header.Get("Link")
-	if strings.Contains(link, "wp-json") || strings.Contains(link, "api.w.org") {
-		return true
-	}
-
-	// couldn't find hints in header. try body
-	var pathsToSearch = []string{
-		"wp-login.php", "wp-json", "wp-content", "wp-admin", "wp-includes",
-	}
-
-	for _, path := range pathsToSearch {
-		if strings.Contains(bodyStr, path) {
-			return true
+	if strings.Contains(link, "api.w.org") {
+		re := regexp.MustCompile(`<([^>]+)>`)
+		match := re.FindStringSubmatch(link)
+		if len(match) > 1 {
+			return true, match[1]
 		}
 	}
 
-	return false
+	bodyStr := string(body)
+	var pathsToSearch = []string{
+		"wp-login.php", "wp-json", "wp-content", "wp-admin", "wp-includes",
+	}
+	for _, path := range pathsToSearch {
+		if strings.Contains(bodyStr, path) {
+			return true, w.probeDocURL(baseURL)
+		}
+	}
+
+	return false, ""
+}
+
+func (w *WordpressParser) probeDocURL(baseURL string) string {
+	for _, path := range wordpressPaths {
+		url := baseURL + path
+		resp, err := http.Get(url)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		if w.HasRoutes(b) {
+			return url
+		}
+	}
+	return ""
 }
 
 func (w *WordpressParser) HasRoutes(data []byte) bool {
@@ -108,3 +135,4 @@ func (w *WordpressParser) Parse(data []byte) (*s.APISchema, error) {
 
 	return &schema, nil
 }
+

@@ -5,8 +5,8 @@ import (
 	"net/http"
 )
 
-func (g *GraphQLParser) Detect(header http.Header, body []byte) bool {
-	return false
+func (g *GraphQLParser) Detect(baseURL string, header http.Header, body []byte) (bool, string) {
+	return false, ""
 }
 
 func (g *GraphQLParser) HasRoutes(data []byte) bool {
