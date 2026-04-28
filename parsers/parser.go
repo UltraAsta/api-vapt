@@ -8,7 +8,7 @@ import (
 type Parser interface {
 	Parse(data []byte) (*s.APISchema, error)
 	Detect(header http.Header, body []byte) bool
-	Compress(schema *s.APISchema) ([]string, error)
+	// Compress(schema *s.APISchema) ([]string, error)
 	HasRoutes(data []byte) bool
 }
 

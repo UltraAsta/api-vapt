@@ -3,12 +3,13 @@ package parsers
 import (
 	s "apivapt/schema"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 )
 
-func (w *WordpressParser) Detect(header http.Header, body string) bool {
+func (w *WordpressParser) Detect(header http.Header, body []byte) bool {
+	bodyStr := string(body)
+
 	link := header.Get("Link")
 	if strings.Contains(link, "wp-json") || strings.Contains(link, "api.w.org") {
 		return true
@@ -20,7 +21,7 @@ func (w *WordpressParser) Detect(header http.Header, body string) bool {
 	}
 
 	for _, path := range pathsToSearch {
-		if strings.Contains(body, path) {
+		if strings.Contains(bodyStr, path) {
 			return true
 		}
 	}
@@ -106,48 +107,4 @@ func (w *WordpressParser) Parse(data []byte) (*s.APISchema, error) {
 	}
 
 	return &schema, nil
-}
-
-func (w *WordpressParser) Compress(schema *s.APISchema) ([]string, error) {
-	var compressedEndpoints []string
-
-	for _, endpoint := range schema.Endpoints {
-		methods := strings.Join(endpoint.Methods, ",")
-		path := endpoint.Path
-
-		var argList []string
-		for key, value := range endpoint.Args {
-			enums := strings.Join(value.Enum, "|")
-			requiredOrNot := ""
-			if value.Required == true {
-				requiredOrNot = "*"
-			}
-
-			defaultValue := ""
-			if value.Default != nil {
-				defaultValue = fmt.Sprintf("=%v", value.Default)
-			}
-
-			arg := fmt.Sprintf("%v%v:%v%v{%v}", requiredOrNot, key, value.Type, defaultValue, value.In)
-			if len(enums) > 0 {
-				arg += fmt.Sprintf("[%v]", enums)
-			}
-
-			argList = append(argList, arg)
-		}
-
-		args := strings.Join(argList, ";")
-
-		compressedEndpoint := fmt.Sprintf("[%v] %v", methods, path)
-
-		if len(args) > 0 {
-			compressedEndpoint += fmt.Sprintf(" | %v", args)
-		}
-
-		compressedEndpoints = append(compressedEndpoints, compressedEndpoint)
-	}
-
-	result := strings.Join(compressedEndpoints, "\n")
-	fmt.Println(result)
-	return compressedEndpoints, nil
 }

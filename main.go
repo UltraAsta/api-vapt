@@ -1,11 +1,12 @@
 package main
 
 import (
-	p "apivapt/parsers"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -23,23 +24,23 @@ func main() {
 		log.Fatalf("Error reading the response body: %v", err)
 	}
 
-	wp := p.WordpressParser{}
-	detected := wp.HasRoutes(body)
+	ctx := ParserContext{}
+	detected := ctx.Detect(resp.Header, body)
 	if detected {
-		schema, err := wp.Parse(body)
+		schema, err := ctx.Parse(body)
 		if err != nil {
 			log.Fatalf("Something went wrong parsing wordpress body: %v", err)
 		}
 
-		wp.Compress(schema)
+		compressed, _ := schema.Compress()
 
-		// file, err := os.Create("output.json")
-		// if err != nil {
-		// 	log.Fatalf("Something went wrong creating output file: %v", err)
-		// }
+		file, err := os.Create("output.json")
+		if err != nil {
+			log.Fatalf("Something went wrong creating output file: %v", err)
+		}
 
-		// defer file.Close()
+		defer file.Close()
 
-		// json.NewEncoder(file).Encode(&schema)
+		json.NewEncoder(file).Encode(&compressed)
 	}
 }
