@@ -2,3 +2,4 @@
 .env.local
 *.json
 *.txt
+venv/
