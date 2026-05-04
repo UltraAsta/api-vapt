@@ -56,10 +56,27 @@ func (a *Agent) Scan(apiSchema *schema.APISchema, compressed []string) []schema.
 				},
 			},
 		}},
-		// {OfTool: &anthropic.ToolParam{
-		// 	Name: "ssrf",
-		// 	Description: anthropic.String("Execute "),
-		// }}
+		{OfTool: &anthropic.ToolParam{
+			Name:        "ssrf",
+			Description: anthropic.String("Test an endpoint for Server-Side Request Forgery by injecting internal URLs into URL-like parameters"),
+			InputSchema: anthropic.ToolInputSchemaParam{
+				Properties: map[string]any{
+					"path":    map[string]any{"type": "string", "description": "Endpoint path, e.g. /api/fetch"},
+					"methods": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "HTTP methods to test"},
+					"args":    map[string]any{"type": "object", "description": "Query parameter names and their types, e.g. {\"url\": {\"type\": \"string\"}}"},
+				},
+			},
+		}},
+		{OfTool: &anthropic.ToolParam{
+			Name:        "ratelimit",
+			Description: anthropic.String("Test an endpoint for missing rate limiting by sending repeated requests and checking for 429 responses"),
+			InputSchema: anthropic.ToolInputSchemaParam{
+				Properties: map[string]any{
+					"path":    map[string]any{"type": "string", "description": "Endpoint path, e.g. /api/login"},
+					"methods": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "HTTP methods to test"},
+				},
+			},
+		}},
 	}
 
 	systemPrompt := fmt.Sprintf(`You are a penetration tester. You are given a list of API endpoints from %s.
@@ -113,6 +130,27 @@ Base URL: %s`, apiSchema.Type, apiSchema.BaseURL)
 				}
 				json.Unmarshal([]byte(tool.JSON.Input.Raw()), &input)
 				found := (&attacks.BOLA{}).Run(schema.Endpoint{Path: input.Path, Methods: input.Methods}, a.BaseURL)
+				findings = append(findings, found...)
+				result = fmt.Sprintf("%d findings", len(found))
+
+			case "ssrf":
+				var input struct {
+					Path    string                 `json:"path"`
+					Methods []string               `json:"methods"`
+					Args    map[string]schema.Arg  `json:"args"`
+				}
+				json.Unmarshal([]byte(tool.JSON.Input.Raw()), &input)
+				found := (&attacks.SSRF{}).Run(schema.Endpoint{Path: input.Path, Methods: input.Methods, Args: input.Args}, a.BaseURL)
+				findings = append(findings, found...)
+				result = fmt.Sprintf("%d findings", len(found))
+
+			case "ratelimit":
+				var input struct {
+					Path    string   `json:"path"`
+					Methods []string `json:"methods"`
+				}
+				json.Unmarshal([]byte(tool.JSON.Input.Raw()), &input)
+				found := (&attacks.RateLimit{}).Run(schema.Endpoint{Path: input.Path, Methods: input.Methods}, a.BaseURL)
 				findings = append(findings, found...)
 				result = fmt.Sprintf("%d findings", len(found))
 
