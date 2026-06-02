@@ -42,6 +42,38 @@ func (a *Agent) Scan(apiSchema *schema.APISchema, compressed []string) []schema.
 			},
 		}},
 		{OfTool: &anthropic.ToolParam{
+			Name:        "mass_assignment",
+			Description: anthropic.String("Test an endpoint for Mass Assignment by injecting privileged/internal fields (is_admin, role, balance, etc.) into the request body and checking if they're accepted and reflected"),
+			InputSchema: anthropic.ToolInputSchemaParam{
+				Properties: map[string]any{
+					"path":    map[string]any{"type": "string", "description": "Endpoint path, e.g. /api/users"},
+					"methods": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "HTTP methods to test (only POST/PUT/PATCH are exercised)"},
+					"args":    map[string]any{"type": "object", "description": "Documented args and their schema, e.g. {\"email\": {\"type\": \"string\", \"in\": \"body\"}}"},
+				},
+			},
+		}},
+		{OfTool: &anthropic.ToolParam{
+			Name:        "excessive_data_exposure",
+			Description: anthropic.String("Test an endpoint for Excessive Data Exposure by reading its JSON response and flagging sensitive fields (password, token, secret, ssn, etc.) the client should not receive"),
+			InputSchema: anthropic.ToolInputSchemaParam{
+				Properties: map[string]any{
+					"path":    map[string]any{"type": "string", "description": "Endpoint path, e.g. /api/users/1"},
+					"methods": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "HTTP methods to test (only GET is exercised)"},
+				},
+			},
+		}},
+		{OfTool: &anthropic.ToolParam{
+			Name:        "bfla",
+			Description: anthropic.String("Test a privileged/admin endpoint for Broken Function Level Authorization by calling it without credentials and checking whether it succeeds (2xx) instead of returning 401/403"),
+			InputSchema: anthropic.ToolInputSchemaParam{
+				Properties: map[string]any{
+					"path":     map[string]any{"type": "string", "description": "Endpoint path, e.g. /api/admin/users"},
+					"methods":  map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "HTTP methods to test"},
+					"mutating": map[string]any{"type": "boolean", "description": "Set true ONLY with authorization to send destructive methods (PUT/PATCH/DELETE). Defaults to false (read-only probes)."},
+				},
+			},
+		}},
+		{OfTool: &anthropic.ToolParam{
 			Name:        "report_finding",
 			Description: anthropic.String("Report a confirmed security vulnerability"),
 			InputSchema: anthropic.ToolInputSchemaParam{
@@ -130,6 +162,38 @@ Base URL: %s`, apiSchema.Type, apiSchema.BaseURL)
 				}
 				json.Unmarshal([]byte(tool.JSON.Input.Raw()), &input)
 				found := (&attacks.BOLA{}).Run(schema.Endpoint{Path: input.Path, Methods: input.Methods}, a.BaseURL)
+				findings = append(findings, found...)
+				result = fmt.Sprintf("%d findings", len(found))
+
+			case "mass_assignment":
+				var input struct {
+					Path    string                `json:"path"`
+					Methods []string              `json:"methods"`
+					Args    map[string]schema.Arg `json:"args"`
+				}
+				json.Unmarshal([]byte(tool.JSON.Input.Raw()), &input)
+				found := (&attacks.MassAssignment{}).Run(schema.Endpoint{Path: input.Path, Methods: input.Methods, Args: input.Args}, a.BaseURL)
+				findings = append(findings, found...)
+				result = fmt.Sprintf("%d findings", len(found))
+
+			case "excessive_data_exposure":
+				var input struct {
+					Path    string   `json:"path"`
+					Methods []string `json:"methods"`
+				}
+				json.Unmarshal([]byte(tool.JSON.Input.Raw()), &input)
+				found := (&attacks.ExcessiveDataExposure{}).Run(schema.Endpoint{Path: input.Path, Methods: input.Methods}, a.BaseURL)
+				findings = append(findings, found...)
+				result = fmt.Sprintf("%d findings", len(found))
+
+			case "bfla":
+				var input struct {
+					Path     string   `json:"path"`
+					Methods  []string `json:"methods"`
+					Mutating bool     `json:"mutating"`
+				}
+				json.Unmarshal([]byte(tool.JSON.Input.Raw()), &input)
+				found := (&attacks.BFLA{Mutating: input.Mutating}).Run(schema.Endpoint{Path: input.Path, Methods: input.Methods}, a.BaseURL)
 				findings = append(findings, found...)
 				result = fmt.Sprintf("%d findings", len(found))
 

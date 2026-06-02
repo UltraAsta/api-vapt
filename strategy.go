@@ -27,12 +27,3 @@ func (c *ParserContext) Detect(baseURL string, header http.Header, body []byte) 
 	}
 	return nil, ""
 }
-
-// func (c *ParserContext) Parse(data []byte) (*schema.APISchema, error) {
-// 	for _, p := range c.Parsers {
-// 		if p.HasRoutes(data) {
-// 			return p.Parse(data)
-// 		}
-// 	}
-// 	return nil, nil
-// }

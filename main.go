@@ -14,7 +14,7 @@ func main() {
 	// setup
 	godotenv.Load()
 
-	baseUrl := "http://localhost:31337/"
+	baseUrl := "http://localhost:8888"
 
 	header, body := ReadURLContent(baseUrl)
 
