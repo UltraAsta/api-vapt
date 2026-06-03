@@ -199,9 +199,9 @@ Base URL: %s`, apiSchema.Type, apiSchema.BaseURL)
 
 			case "ssrf":
 				var input struct {
-					Path    string                 `json:"path"`
-					Methods []string               `json:"methods"`
-					Args    map[string]schema.Arg  `json:"args"`
+					Path    string                `json:"path"`
+					Methods []string              `json:"methods"`
+					Args    map[string]schema.Arg `json:"args"`
 				}
 				json.Unmarshal([]byte(tool.JSON.Input.Raw()), &input)
 				found := (&attacks.SSRF{}).Run(schema.Endpoint{Path: input.Path, Methods: input.Methods, Args: input.Args}, a.BaseURL)
